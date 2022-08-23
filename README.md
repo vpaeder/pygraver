@@ -6,6 +6,14 @@ PyGraver contains a rendering submodule with local and remote rendering features
 
 <div style="width:100%;text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990437-6d2894b0-45ae-4c8f-9027-f1114c49b84d.png" alt="A model generated with PyGraver" width="66%"><p><strong>A model generated with PyGraver</strong></p></div>
 
+## Table of contents
+
+1. [Dependencies](#dependencies)
+2. [Installation](#installation)
+3. [Tests](#tests)
+4. [Usage](#usage)
+5. [Examples](#examples)
+
 ## Dependencies
 
 You need Python 3.8 or newer and your C++ compiler must support C++20 or newer.
@@ -191,7 +199,7 @@ Point(x=0, y=0, z=0, c=0)
 - `__neq__`: pt1 != pt2
 - `__repr__`: print out coordinate values
 
-#### Path class (pygraver.core.types.Path) {#typespath}
+#### Path class (pygraver.core.types.Path)
 
 The Path class uses points to represent paths in 3D. It comes with a range of methods to manipulate paths and optimize them for fabrication. For instance, you may want to apply some geometric operations (scaling, rotation, ...) to generate a pattern, then simplify on various criteria (machine resolution, height, ...), then add some ramps to avoid crashing your tool into the workpiece.
 
@@ -289,7 +297,7 @@ StyledPath(xs=numpy.array(), ys=numpy.array(), zs=numpy.array(), cs=numpy.array(
 - *model* (pygraver.core.render.Model): associated model (default: None)
 - *color* (list[uint8]): path color (default: [0,0,0,255])
 
-#### PathGroup class (pygraver.core.types.PathGroup)  {#typespathgroup}
+#### PathGroup class (pygraver.core.types.PathGroup)
 
 The PathGroup class represents a group of paths. It allows applying operations on all paths at once. Moreover, it comes with a number of methods to improve fabricability.
 
@@ -350,7 +358,7 @@ PathGroup(paths:list[Path]=[])
 - `__mul__`: pathgroup*n -> duplicate pathgroup n times
 - `__rmul__`: n*pathgroup -> like `__mul__`
 
-#### Surface class (pygraver.core.types.Surface) {#typessurface}
+#### Surface class (pygraver.core.types.Surface)
 
 The Surface class represents a surface. It is used for two different purposes: calculating toolpaths for milling and masking areas.
 
@@ -395,7 +403,7 @@ Surface(contours:Surface, holes:Surface)
 - `__sub__`: surface1 - surface2 -> boolean difference
 - `__mul__`: surface1 * surface2 -> boolean intersection
 
-#### SVG file parser (pygraver.core.svg.File) {#svgfile}
+#### SVG file parser (pygraver.core.svg.File)
 
 It is often convenient to draw models with a vector drawing tool. For this purpose I use Inkscape, therefore files generated with Inkscape will likely work. Other tools may work as well provided that one can produce SVG groups (layers) with them. To prepare your model, create a layer and name it with the name of your choice, then fill it with the shapes you want to use in PyGraver. Coordinates are computed relative to the center of the SVG view box.
 
@@ -431,7 +439,7 @@ File(file_name:str)
 Rendering classes are spread across several submodules.
 First of all, submodule *pygraver.core.render* contains the base classes to render toolpaths in 3D. These are extended with specific classes for local rendering in *pygraver.render* and for remote rendering in *pygraver.web*.
 
-#### Model class (pygraver.core.render.Model) {#rendermodel}
+#### Model class (pygraver.core.render.Model)
 
 This is the class used to gather elements and render them.
 
@@ -518,7 +526,7 @@ Shape3D()
 | `get_interactive() -> list[(actor:vtkActor, label:str)]` | get a list of shape actors that can be interacted with; an associated label comes with each actor | |
 
 
-#### Extrusion subclass (pygraver.core.render.Extrusion) {#renderextrusion}
+#### Extrusion subclass (pygraver.core.render.Extrusion)
 
 This is a Shape3D subclass that extrudes a contour linearly.
 
@@ -553,7 +561,7 @@ Cylinder(radius:float, height:float, center:Point, axis:Point, color:list[uint8]
 - *axis* (Point): vector defining cylinder axis
 - *color* (list[uint8]): shape RGBA color
 
-#### Wire subclass (pygraver.core.render.Wire) {#renderwire}
+#### Wire subclass (pygraver.core.render.Wire)
 
 This is a Shape3D subclass that creates a wire along a path.
 
@@ -655,7 +663,7 @@ BalloonText(shape:Shape3D)
 
 - *shape* (Shape3D): shape to associate with
 
-#### WebLayout class (pygraver.web.WebLayout) {#webweblayout}
+#### WebLayout class (pygraver.web.WebLayout)
 
 This is a simple web layout to render a *Model* object remotely using [trame](https://kitware.github.io/trame/). You may also be interested in [this addendum](@ref addendum) to configure your server adequately.
 
@@ -761,17 +769,17 @@ Some examples are available in the *examples* folder. Here is a short descriptio
 
 | Example name | Covered items | Screenshot |
 |--------------|---------------|------------|
-| *example1.py* | - load shapes from a SVG file: [svg.File](#svgfile)<br/> - create [Surface](#typessurface), [Path](#typespath) and [PathGroup](#typespathgroup) objects<br/> - arrange paths in path group and mask them with surface | |
+| *example1.py* | - load shapes from a SVG file<br/> - create Surface, Path and PathGroup objects<br/> - arrange paths in path group and mask them with surface | |
 | *example2.py* | extends example 1 and shows how to display result with Matplotlib | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990541-0da58b84-d4ec-4f4a-ab29-c31111d2ca8f.png" alt="Screenshot of example2.py" style="max-width:33vw"></div> |
-| *example3.py* | extends example 1 and shows how to render result with VTK: [render.Model](#rendermodel), [render.Extrusion](#renderextrusion), [render.Wire](#renderwire) | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990558-782c2c51-bd10-4e11-bf39-1b8eb357093a.png" alt="Screenshot of example3.py" style="max-width:33vw"></div> |
+| *example3.py* | extends example 1 and shows how to render result with VTK | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990558-782c2c51-bd10-4e11-bf39-1b8eb357093a.png" alt="Screenshot of example3.py" style="max-width:33vw"></div> |
 | *example3b.py* | a variation of example3 with paths corrected in such a way to remove points outside surface and add insertion and extraction ramps | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990567-cd72dde4-8851-4515-acd2-5254036571ac.png" alt="Screenshot of example3b.py" style="max-width:33vw"></div> |
 | *example3c.py* | A variation of example3 that shows how to dynamically update a model using the default renderer. It takes the paths rendered in example3 and add them to the model with >=1.0 second interval. | |
 | *example3d.py* | a variation of example3 which demonstrates the use of widgets | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990593-b3200ab6-d440-46f2-9df6-5f546714e8a7.png" alt="Screenshot of example3d.py" style="max-width:33vw"></div> |
-| *example4.py* | shows how to render a model remotely using trame: [web.WebLayout](#webweblayout) | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990621-49281927-f901-490b-b069-2d821edd4501.png" alt="Screenshot of example4.py" style="max-width:33vw"></div> |
+| *example4.py* | shows how to render a model remotely using trame | <div style="text-align:center"><img src="https://user-images.githubusercontent.com/6388158/185990621-49281927-f901-490b-b069-2d821edd4501.png" alt="Screenshot of example4.py" style="max-width:33vw"></div> |
 | *example4b.py* | A variation of example4.py which shows how to dynamically update a model rendered remotely using trame. It adds one path every second to the model. | |
 | *example5.py* | shows how to send paths generated in example1 to a machine | |
 
-## Addendum - configuring nginx for remote access {#addendum}
+## Addendum - configuring nginx for remote access
 
 While this is not specific to PyGraver but rather to trame, I describe here how to configure [nginx](https://www.nginx.com/) to give access to trame server remotely (in this example, access is given on default http port 80). With the default trame configuration (port 8080), this is what should be added to the *nginx.conf* file in the *http* section:
 
