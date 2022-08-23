@@ -101,15 +101,15 @@ This is used to select a divergence matrix component in *divergence* methods of 
 
 ##### Elements
 
-- *DxDx*: \f$\delta x/\delta x\f$
-- *DxDy*: \f$\delta x/\delta y\f$
-- *DxDz*: \f$\delta x/\delta z\f$
-- *DyDx*: \f$\delta y/\delta x\f$
-- *DyDy*: \f$\delta y/\delta y\f$
-- *DyDz*: \f$\delta y/\delta z\f$
-- *DzDx*: \f$\delta z/\delta x\f$
-- *DzDy*: \f$\delta z/\delta y\f$
-- *DzDz*: \f$\delta z/\delta z\f$
+- *DxDx*: $\delta x/\delta x$
+- *DxDy*: $\delta x/\delta y$
+- *DxDz*: $\delta x/\delta z$
+- *DyDx*: $\delta y/\delta x$
+- *DyDy*: $\delta y/\delta y$
+- *DyDz*: $\delta y/\delta z$
+- *DzDx*: $\delta z/\delta x$
+- *DzDy*: $\delta z/\delta y$
+- *DzDz*: $\delta z/\delta z$
 
 #### DivComponent enum (pygraver.core.types.RampDirection)
 
