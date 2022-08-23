@@ -1,0 +1,19 @@
+[build-system]
+requires = [
+  "setuptools>=42",
+  "pybind11>=2.10.0",
+  "wheel",
+  "scikit-build",
+  "cmake",
+  "ninja; platform_system!='Windows'",
+  "numpy",
+  "pyserial-asyncio",
+  "pyserial",
+  "vtk",
+  "trame>=2.1.0"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.cibuildwheel]
+test-command = "python -m unittest {project}/tests"
+test-extras = ["tests"]
