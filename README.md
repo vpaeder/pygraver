@@ -51,13 +51,7 @@ Optional for 2D rendering examples:
 
 ## Installation
 
-First and foremost, clone the repository:
-
-```bash
-git clone https://github.com/vpaeder/pygraver
-```
-
-Then, check that you have all the necessary C/C++ libraries and build tools. Now you can use the Python setup script to do the rest:
+First of all, check that you have all the necessary C/C++ libraries and build tools. Then you can use the Python setup script to do the rest:
 
 ```bash
 python -m pip install git+https://github.com/vpaeder/pygraver
