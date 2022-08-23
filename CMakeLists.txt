@@ -45,7 +45,7 @@ execute_process(COMMAND geos-config --libs
 STRING(REGEX MATCHALL "-L([^ ]+)" GEOS_LIB_FLAGS "${GEOS_LD_FLAGS}")
 STRING(REGEX REPLACE "-L" "" GEOS_LIBRARY_DIR ${GEOS_LIB_FLAGS})
 # find include dir
-FIND_LIBRARY(GEOS_INCLUDE_DIR geos REQUIRED)
+FIND_PATH(GEOS_INCLUDE_DIR geos_c.h)
 message(GEOS " includes found in ${GEOS_INCLUDE_DIR}")
 message(GEOS " library found in ${GEOS_LIBRARY_DIR}")
 FIND_PACKAGE(VTK REQUIRED)
