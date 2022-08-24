@@ -1054,7 +1054,7 @@ namespace pygraver::types {
             new_path->emplace_back((*q)[i]);
             // unwrap angles to make sure that new values start within +-360deg of previous values
             if (np+i>0)
-                (*new_path)[np+i-1]->c = (*new_path)[np+i-1]->c + angle_norm((*q)[i]->c - (*new_path)[np+i-1]->c);
+                (*new_path)[np+i]->c = (*new_path)[np+i-1]->c + angle_norm((*q)[i]->c - (*new_path)[np+i-1]->c);
         }
         return new_path;
     }
@@ -1066,7 +1066,7 @@ namespace pygraver::types {
         new_path->emplace_back(std::const_pointer_cast<Point>(q));
         // unwrap angles to make sure that new values start within +-360deg of previous values
         if (n>0)
-            (*new_path)[n-1]->c = (*new_path)[n-1]->c + angle_norm(q->c - (*new_path)[n-1]->c);
+            (*new_path)[n]->c = (*new_path)[n-1]->c + angle_norm(q->c - (*new_path)[n-1]->c);
         return new_path;
     }
 
