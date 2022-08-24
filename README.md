@@ -16,7 +16,7 @@ PyGraver contains a rendering submodule with local and remote rendering features
 
 ## Dependencies
 
-You need Python 3.8 or newer and your C++ compiler must support C++20 or newer.
+You need Python 3.10 or newer and your C++ compiler must support C++20 or newer.
 
 Beyond this, you'll need the following C/C++ libraries:
 
