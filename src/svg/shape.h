@@ -90,6 +90,7 @@ namespace pygraver::svg {
                         matrix[6] += params[1]*matrix[14];
                         matrix[7] += params[1]*matrix[15];
                     } else if (operation == "scale") {
+                        if (params.size()==1) params.emplace_back(params[0]);
                         PYG_LOG_D("Transform: scaling by ({},{})", params[0], params[1]);
                         matrix[0] *= params[0];
                         matrix[1] *= params[0];
