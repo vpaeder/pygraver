@@ -243,7 +243,7 @@ class Machine(object):
         # send command to instrument
         if self.__writer is None: return False
         timeout = self._timeout if timeout is None else timeout
-        self.__writer.write(cmd="{cmd}{term}".format(cmd=cmd, term=self._term_char).encode("utf-8"))
+        self.__writer.write("{cmd}{term}".format(cmd=cmd, term=self._term_char).encode("utf-8"))
         logging.info(cmd)
         await asyncio.wait_for(self.__writer.drain(), timeout)
     
@@ -262,7 +262,7 @@ class Machine(object):
         '''
         if self.__reader is None: return None
         timeout = self._timeout if timeout is None else timeout
-        return await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char), timeout=timeout)
+        return await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char.encode("utf-8")), timeout=timeout)
         
     async def wait_answer(self, n_lines:int=1, timeout:float|None=None) -> 'list[bytes]':
         '''
@@ -281,7 +281,7 @@ class Machine(object):
         msg = []
         while n_lines:
             try:
-                msg.append(await self.readline(timeout))
+                msg.append(await Machine.readline(self, timeout))
             except asyncio.TimeoutError:
                 return None
             n_lines -= 1
@@ -306,8 +306,8 @@ class Machine(object):
             asyncio.TimeoutError: if command couldn't be sent to machine within timeout
         
         '''
-        await self.write(cmd=cmd, timeout=timeout)
-        return await self.wait_answer(n_lines=n_lines, timeout=timeout)
+        await Machine.write(self, cmd=cmd, timeout=timeout)
+        return await Machine.wait_answer(self, n_lines=n_lines, timeout=timeout)
     
     async def wait(self, timeout:float|None=None) -> bool:
         '''
@@ -324,11 +324,11 @@ class Machine(object):
         
         '''
         if self.__reader is None: return False
-        await self.write(cmd="G4 S0", timeout=timeout)
+        await Machine.write(self, cmd="G4 S0", timeout=timeout)
         try:
             # we don't care about the content of the answer, as long as we get an answer
             # (which means that the machine has finished all the assigned tasks and is now ready)
-            await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char), timeout=timeout)
+            await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char.encode("utf-8")), timeout=timeout)
         except asyncio.TimeoutError:
             return False
         return True
@@ -352,14 +352,14 @@ class Machine(object):
             else:
                 return types.Point()
 
-        rep = await self.ask(cmd="M114", n_lines=2, timeout=timeout)
+        rep = await Machine.ask(self, cmd="M114", n_lines=2, timeout=timeout)
 
         if rep is None:
             raise asyncio.TimeoutError("Machine didn't answer within timeout.")
 
         pt = types.Point()
         for ax in self._axes:
-            match = re.search("(?i)({}:(?: |)(?:-|)[0-9]{{1,8}}(?:\.|)[0-9]{{0,8}})".format(ax).encode("utf-8"), rep)
+            match = re.search("(?i)({}:(?: |)(?:-|)[0-9]{{1,8}}(?:\.|)[0-9]{{0,8}})".format(ax).encode("utf-8"), rep[0])
             if match is not None:
                 setattr(pt, self._axes[ax], float(match.group(1).split(b":")[1]))
             else:
@@ -403,7 +403,7 @@ class Machine(object):
             bool: True if successful, False otherwise
         '''
         if position is not None:
-            return await self.set_position(x=position.x, y=position.y, z=position.z, c=position.c, timeout=timeout)
+            return await Machine.set_position(self, x=position.x, y=position.y, z=position.z, c=position.c, timeout=timeout)
         
         new_pos = self._parse_position(**kwargs)
         if len(self.history)>0:
@@ -415,7 +415,7 @@ class Machine(object):
         
         # sets coordinates to given values
         try:
-            await self.ask(cmd=self._make_position_string("G92", new_pos), n_lines=1, timeout=timeout)
+            await Machine.ask(self, cmd=self._make_position_string("G92", new_pos), n_lines=1, timeout=timeout)
             return True
         except asyncio.TimeoutError:
             return False        
@@ -456,11 +456,11 @@ class Machine(object):
         if isinstance(x, list) or isinstance(x, tuple):
             if len(x)!=self._N_axes:
                 raise IndexError("Argument, as a list or tuple, must be of size %d." % self._N_axes)
-            return await self.set_position(**dict(zip(self._axes, x)))
+            return await Machine.set_position(self, **dict(zip(self._axes, x)))
         elif isinstance(x, dict):
-            return await self.set_position(**x)
+            return await Machine.set_position(self, **x)
         elif isinstance(x, types.Point):
-            return await self.set_position(position=x)
+            return await Machine.set_position(self, position=x)
         else:
             raise TypeError("Argument must be a vector of length %d or a dictionnary with keys in %s." % (self._N_axes, self._axes))
         
@@ -481,7 +481,7 @@ class Machine(object):
             asyncio.TimeoutError: if command didn't return within timeout
         '''
         if position is not None:
-            return await self.move(relative=relative, timeout=timeout, x=position.x, y=position.y, z=position.z, c=position.c)
+            return await Machine.move(self, relative=relative, timeout=timeout, x=position.x, y=position.y, z=position.z, c=position.c)
 
         new_pos = self._parse_position(**kwargs)
 
@@ -501,7 +501,7 @@ class Machine(object):
         for ax in new_pos:
             setattr(pt, self._axes[ax], new_pos[ax])
         
-        await self.write(cmd=cmd, timeout=timeout)
+        await Machine.write(self, cmd=cmd, timeout=timeout)
 
     async def abs_move(self, position:types.Point|None=None, timeout=None, **kwargs) -> bool:
         '''
@@ -519,9 +519,9 @@ class Machine(object):
             asyncio.TimeoutError: if command didn't return within timeout
         '''
         if position is not None:
-            return await self.move(position=position, relative=False, timeout=timeout)
+            return await Machine.move(self, position=position, relative=False, timeout=timeout)
         
-        await self.move(relative=False, timeout=timeout, **kwargs)
+        await Machine.move(self, relative=False, timeout=timeout, **kwargs)
 
     async def rel_move(self, position:types.Point|None=None, timeout=None, **kwargs) -> bool:
         '''
@@ -539,9 +539,9 @@ class Machine(object):
             asyncio.TimeoutError: if command didn't return within timeout
         '''
         if position is not None:
-            return await self.move(position=position, relative=True, timeout=timeout)
+            return await Machine.move(self, position=position, relative=True, timeout=timeout)
         
-        await self.move(relative=True, timeout=timeout, **kwargs)
+        await Machine.move(self, relative=True, timeout=timeout, **kwargs)
 
     def enable_endstops(self) -> None:
         '''
@@ -571,7 +571,7 @@ class Machine(object):
         '''
         if self.__writer is None: return {}
         # reads endstop status
-        rep = await self.ask(cmd="M119", n_lines=2, timeout=timeout)
+        rep = await Machine.ask(self, cmd="M119", n_lines=2, timeout=timeout)
 
         trigs = {}
         for ax in self._axes:
@@ -597,7 +597,7 @@ class Machine(object):
             asyncio.TimeoutError: if command didn't return within timeout
         '''
         # switches motors on (state=True) or off (state=False)
-        return await self.write(cmd="M84 S30" if state else "M18", timeout=timeout)
+        return await Machine.write(self, cmd="M84 S30" if state else "M18", timeout=timeout)
         
     async def trace_pattern(self, path:types.Path|None=None, xs:'list[float]|None'=None, ys:'list[float]|None'=None, zs:'list[float]|None'=None, cs:'list[float]|None'=None, timeout:float|None=None) -> bool:
         '''
@@ -622,7 +622,7 @@ class Machine(object):
             
         '''
         if path is not None:
-            return await self.trace_pattern(xs=path.xs, ys=path.ys, zs=path.zs, cs=path.cs, timeout=timeout)
+            return await Machine.trace_pattern(self, xs=path.xs, ys=path.ys, zs=path.zs, cs=path.cs, timeout=timeout)
         
         if xs is None and ys is None and zs is None and cs is None:
             raise ValueError("At least one vector must be specified.")
@@ -653,9 +653,9 @@ class Machine(object):
                 feed_rate = self._feed_rate,
                 endstops = self._endstops
             )
-            await self.ask(cmd=chain, timeout=timeout)
+            await Machine.ask(self, cmd=chain, timeout=timeout)
         
-        return await self.wait(timeout=timeout)
+        return await Machine.wait(self, timeout=timeout)
         
     def set_model(self, model:render.Model) -> None:
         '''
@@ -687,54 +687,58 @@ class SyncMachine(Machine):
     '''
     Machine handling class. This is the synchronous version of the Machine class.
     '''
+    def __init__(self, port: str = ""):
+        super().__init__(port)
+        self._loop = asyncio.get_event_loop()
+
     def open(self) -> bool:
-        return asyncio.run(super().open())
+        return self._loop.run_until_complete(super().open())
     
     def close(self, timeout: float | None = None) -> bool:
-        return asyncio.run(super().close(timeout))
+        return self._loop.run_until_complete(super().close(timeout))
     
     def write(self, cmd: str, timeout: float | None = None) -> None:
-        return asyncio.run(super().write(cmd, timeout))
+        return self._loop.run_until_complete(super().write(cmd, timeout))
     
     def readline(self, timeout: float | None = None) -> bytes:
-        return asyncio.run(super().readline(timeout))
+        return self._loop.run_until_complete(super().readline(timeout))
     
     def wait_answer(self, n_lines: int = 1, timeout: float | None = None) -> 'list[bytes]':
-        return asyncio.run(super().wait_answer(n_lines, timeout))
+        return self._loop.run_until_complete(super().wait_answer(n_lines, timeout))
     
     def ask(self, cmd: str, n_lines: int = 1, timeout: float | None = None) -> 'list[bytes]':
-        return asyncio.run(super().ask(cmd, n_lines, timeout))
+        return self._loop.run_until_complete(super().ask(cmd, n_lines, timeout))
     
     def wait(self, timeout: float | None = None) -> bool:
-        return asyncio.run(super().wait(timeout))
+        return self._loop.run_until_complete(super().wait(timeout))
     
     def get_position(self, timeout: float | None = None) -> types.Point:
-        return asyncio.run(super().get_position(timeout))
+        return self._loop.run_until_complete(super().get_position(timeout))
     
     def set_position(self, position:types.Point|None=None, timeout: float | None = None, **kwargs) -> bool:
-        return asyncio.run(super().set_position(position, timeout, **kwargs))
+        return self._loop.run_until_complete(super().set_position(position, timeout, **kwargs))
 
     def _set_position(self, x:list|tuple|dict|types.Point) -> None:
-        return asyncio.run(super()._set_position(x))
+        return self._loop.run_until_complete(super()._set_position(x))
     
     position = property(get_position, _set_position)
     
     def move(self, relative=False, position:types.Point|None=None, timeout=None, **kwargs):
-        return asyncio.run(super().move(relative, position, timeout, **kwargs))
+        return self._loop.run_until_complete(super().move(relative, position, timeout, **kwargs))
     
     def abs_move(self, position:types.Point|None=None, timeout=None, **kwargs):
-        return asyncio.run(super().abs_move(position, timeout, **kwargs))
+        return self._loop.run_until_complete(super().abs_move(position, timeout, **kwargs))
     
     def rel_move(self, position:types.Point|None=None, timeout=None, **kwargs):
-        return asyncio.run(super().rel_move(position, timeout, **kwargs))
+        return self._loop.run_until_complete(super().rel_move(position, timeout, **kwargs))
     
     def probe_endstops(self, timeout=None) -> dict:
-        return asyncio.run(super().probe_endstops(timeout))
+        return self._loop.run_until_complete(super().probe_endstops(timeout))
     
     endstops = property(probe_endstops)
     
     def switch_motors(self, state):
-        return asyncio.run(super().switch_motors(state))
+        return self._loop.run_until_complete(super().switch_motors(state))
     
     def trace_pattern(self, path:types.Path|None=None, xs=None, ys=None, zs=None, cs=None, timeout=None) -> None:
-        return asyncio.run(super().trace_pattern(path, xs, ys, zs, cs, timeout))
+        return self._loop.run_until_complete(super().trace_pattern(path, xs, ys, zs, cs, timeout))
