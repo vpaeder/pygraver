@@ -73,7 +73,7 @@ class TestMachineBaseCommands(MachineTestCase):
         await self.machine.write(cmd)
 
         self.assertEqual(
-            self.machine._Machine__writer.write.call_args.kwargs['cmd'],
+            self.machine._Machine__writer.write.call_args.args[0],
             "{}{}".format(cmd, self.machine._term_char).encode("utf-8")
         )
 
@@ -83,7 +83,7 @@ class TestMachineBaseCommands(MachineTestCase):
         self.machine._Machine__reader = Mock()
         self.machine._Machine__reader.readuntil = AsyncMock(return_value=expected)
         result = await self.machine.readline()
-        self.assertEqual(self.machine._Machine__reader.readuntil.call_args.kwargs["separator"], self.machine._term_char)
+        self.assertEqual(self.machine._Machine__reader.readuntil.call_args.kwargs["separator"], self.machine._term_char.encode("utf-8"))
         self.assertEqual(result, expected)
     
     @run_async
@@ -152,7 +152,7 @@ class TestMachineCommands(MachineTestCase):
         self.machine._Machine__writer = Mock()
         self.machine.write = AsyncMock()
         rvalue = "{}{}".format(self.machine._response_ok, self.machine._term_char).encode("utf-8")
-        self.machine.ask = AsyncMock(return_value=rvalue)
+        self.machine.ask = AsyncMock(return_value=[rvalue])
     
     def make_positions(self):
         return {key:10 for key in self.machine._axes}
