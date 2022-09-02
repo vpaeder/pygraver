@@ -707,14 +707,14 @@ Machine(port:str="")
 
 ##### Properties
 
-| Name | Type | Description |
-|------|------|-------------|
 | `port` | getter/setter (str) | logical serial port path |
 | `timeout` | getter/setter (float) | serial timeout, in seconds |
+| `serial_baud_rate` | getter/setter (int) | baud rate for serial line |
+| `term_char` | getter/setter (str) | termination character for serial communication |
+| `response_ok` | getter/setter (str) | OK response string for serial communication |
 | `tool_size` | getter/setter (float) | tool size, for display purpose |
 | `feed_rate` | getter/setter (float) | machine feed rate |
 | `model` | getter/setter (pygraver.core.render.Model | None) | associated rendering model for display |
-
 
 ##### Asynchronous methods
 
@@ -738,6 +738,7 @@ Machine(port:str="")
 | <code>rel_move(position:Point, timeout:float\|None=None, **kwargs) -> bool</code> | move machine to given relative position; return True if succesful | *position* (Point): new position<br/> *timeout* (float\|None): operation timeout (default: None = infinite timeout) |
 | <code>probe_endstops(timeout:float\|None=None) -> dict</code> | probe endstops state; return a dictionnary with one entry per axis and boolean values indicating endstop state | *timeout* (float\|None): operation timeout (default: None = infinite timeout) |
 | <code>switch_motors(state:bool, timeout:float\|None=None) -> bool</code> | switch machine motors on or off; return True if operation is succesful | *state* (bool): True to enable motors, False to disable<br/> *timeout* (float\|None): operation timeout (default: None = infinite timeout) |
+| <code>trace(path:types.Path\|None=None, xs:'list[float]\|None'=None, ys:'list[float]\|None'=None, zs:'list[float]\|None'=None, cs:'list[float]\|None'=None, timeout:float\|None=None) -> bool</code> | make machine to trace given path | *path* (types.Path): path to trace; if given, takes precedence over other arguments<br/> *xs*, *ys*, *zs*, *cs* (list[float]\|None): coordinate vector for matching axis; if more than one is given, must be of the same length<br/> *timeout* (float\|None): operation timeout (default: None = infinite timeout) |
 
 ##### Synchronous methods
 
