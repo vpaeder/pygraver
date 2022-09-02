@@ -33,20 +33,8 @@ class Machine(object):
     Attributes:
         port (str): logical serial port path
         ser (serial.Serial or None): serial connection object, if created, or None
-        level (list or None): if level has been measured in cartesian coordinates,
-        stored level data (see 'measure_level' function for details), None otherwise
         history (list): list of every movement since object creation
         (see display_history for informations on history entries format)
-        transforms (list[Transform]): list of global coordinate transforms applied to movements
-        backlash (list or None): list of backlash values for x, y, z and e coordinates (=list of size 4) or None
-        buffer (list): for deferred movements, a list of g-code commands to be executed later
-        max_buffer_length (int): when the command buffer reaches this length, deferred commands are executed.
-        This number must not exceed the memory capacity of the machine
-        (e.g. for standard Marlin: 4 lines of 96 characters).
-        cx (float): for polar motions, position of rotary table centre in x direction
-        cy (float): for polar motions, position of rotary table centre in y direction
-        _direction (numpy.array[int]): array of directions (one for each coordinate), indicating whether the previous
-        movement occurred in positive (1) or negative (-1) direction.
     
     Note:
         This class assumes that the machine has 3 linear axes (x,y,z) and one rotary axis perpendicular
@@ -69,12 +57,6 @@ class Machine(object):
         self._port = port
         self.__reader = None
         self.__writer = None
-        #self.__ser = None
-        self.buffer = []
-        self.max_buffer_length = 4
-        # position of rotary table centre
-        self.cx = 0.0
-        self.cy = 0.0
         # number of axes
         self._N_axes = len(self._axes)
         # machine settings
@@ -501,9 +483,9 @@ class Machine(object):
         for ax in new_pos:
             setattr(pt, self._axes[ax], new_pos[ax])
         
-        await self.write(cmd=cmd, timeout=timeout)
+        return await self.write(cmd=cmd, timeout=timeout)
 
-    async def abs_move(self, position:types.Point|None=None, timeout=None, **kwargs) -> bool:
+    async def abs_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         '''
         Produce an absolute linear movement from current point to given point.
         
@@ -521,9 +503,9 @@ class Machine(object):
         if position is not None:
             return await self.move(position=position, relative=False, timeout=timeout)
         
-        await self.move(relative=False, timeout=timeout, **kwargs)
+        return await self.move(relative=False, timeout=timeout, **kwargs)
 
-    async def rel_move(self, position:types.Point|None=None, timeout=None, **kwargs) -> bool:
+    async def rel_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         '''
         Produce a relative linear movement from current point to given point.
         
@@ -541,7 +523,7 @@ class Machine(object):
         if position is not None:
             return await self.move(position=position, relative=True, timeout=timeout)
         
-        await self.move(relative=True, timeout=timeout, **kwargs)
+        return await self.move(relative=True, timeout=timeout, **kwargs)
 
     def enable_endstops(self) -> None:
         '''
@@ -690,32 +672,44 @@ class SyncMachine():
     def __init__(self, port: str = ""):
         self.__machine = Machine(port)
         self.__loop = asyncio.get_event_loop()
+    
+    feedrate = property(lambda self: self.__machine.feedrate, lambda self, feedrate: setattr(self.__machine, "feedrate", feedrate))
+    model = property(lambda self: self.__machine.model, lambda self, model: setattr(self.__machine, "model", model))
+    port = property(lambda self: self.__machine.port, lambda self, port: setattr(self.__machine, "port", port))
+    timeout = property(lambda self: self.__machine.timeout, lambda self, timeout: setattr(self.__machine, "timeout", timeout))
+    tool_size = property(lambda self: self.__machine.tool_size, lambda self, tool_size: setattr(self.__machine, "tool_size", tool_size))
 
+    def disable_endstops(self) -> None:
+        self.__machine.disable_endstops()
+
+    def enable_endstops(self) -> None:
+        self.__machine.enable_endstops()
+    
     def open(self) -> bool:
         return self.__loop.run_until_complete(self.__machine.open())
     
-    def close(self, timeout: float | None = None) -> bool:
+    def close(self, timeout: float|None=None) -> bool:
         return self.__loop.run_until_complete(self.__machine.close(timeout))
     
-    def write(self, cmd: str, timeout: float | None = None) -> None:
+    def write(self, cmd: str, timeout: float|None=None) -> None:
         return self.__loop.run_until_complete(self.__machine.write(cmd, timeout))
     
-    def readline(self, timeout: float | None = None) -> bytes:
+    def readline(self, timeout: float|None=None) -> bytes:
         return self.__loop.run_until_complete(self.__machine.readline(timeout))
     
-    def wait_answer(self, n_lines: int = 1, timeout: float | None = None) -> 'list[bytes]':
+    def wait_answer(self, n_lines: int = 1, timeout: float|None=None) -> 'list[bytes]':
         return self.__loop.run_until_complete(self.__machine.wait_answer(n_lines, timeout))
     
-    def ask(self, cmd: str, n_lines: int = 1, timeout: float | None = None) -> 'list[bytes]':
+    def ask(self, cmd: str, n_lines: int = 1, timeout: float|None=None) -> 'list[bytes]':
         return self.__loop.run_until_complete(self.__machine.ask(cmd, n_lines, timeout))
     
-    def wait(self, timeout: float | None = None) -> bool:
+    def wait(self, timeout: float|None=None) -> bool:
         return self.__loop.run_until_complete(self.__machine.wait(timeout))
     
-    def get_position(self, timeout: float | None = None) -> types.Point:
+    def get_position(self, timeout: float|None=None) -> types.Point:
         return self.__loop.run_until_complete(self.__machine.get_position(timeout))
     
-    def set_position(self, position:types.Point|None=None, timeout: float | None = None, **kwargs) -> bool:
+    def set_position(self, position:types.Point|None=None, timeout: float|None=None, **kwargs) -> bool:
         return self.__loop.run_until_complete(self.__machine.set_position(position, timeout, **kwargs))
 
     def _set_position(self, x:list|tuple|dict|types.Point) -> None:
@@ -723,22 +717,22 @@ class SyncMachine():
     
     position = property(get_position, _set_position)
     
-    def move(self, relative=False, position:types.Point|None=None, timeout=None, **kwargs):
+    def move(self, relative=False, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         return self.__loop.run_until_complete(self.__machine.move(relative, position, timeout, **kwargs))
     
-    def abs_move(self, position:types.Point|None=None, timeout=None, **kwargs):
+    def abs_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         return self.__loop.run_until_complete(self.__machine.abs_move(position, timeout, **kwargs))
     
-    def rel_move(self, position:types.Point|None=None, timeout=None, **kwargs):
+    def rel_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         return self.__loop.run_until_complete(self.__machine.rel_move(position, timeout, **kwargs))
     
-    def probe_endstops(self, timeout=None) -> dict:
+    def probe_endstops(self, timeout:float=None) -> dict:
         return self.__loop.run_until_complete(self.__machine.probe_endstops(timeout))
     
     endstops = property(probe_endstops)
     
-    def switch_motors(self, state):
+    def switch_motors(self, state:bool) -> bool:
         return self.__loop.run_until_complete(self.__machine.switch_motors(state))
     
-    def trace_pattern(self, path:types.Path|None=None, xs=None, ys=None, zs=None, cs=None, timeout=None) -> None:
+    def trace_pattern(self, path:types.Path|None=None, xs=None, ys=None, zs=None, cs=None, timeout:float=None) -> None:
         return self.__loop.run_until_complete(self.__machine.trace_pattern(path, xs, ys, zs, cs, timeout))
