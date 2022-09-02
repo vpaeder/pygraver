@@ -656,9 +656,9 @@ class Machine(object):
         # switches motors on (state=True) or off (state=False)
         return await self.write(cmd="M84 S30" if state else "M18", timeout=timeout)
         
-    async def trace_pattern(self, path:types.Path|None=None, xs:'list[float]|None'=None, ys:'list[float]|None'=None, zs:'list[float]|None'=None, cs:'list[float]|None'=None, timeout:float|None=None) -> bool:
+    async def trace(self, path:types.Path|None=None, xs:'list[float]|None'=None, ys:'list[float]|None'=None, zs:'list[float]|None'=None, cs:'list[float]|None'=None, timeout:float|None=None) -> bool:
         '''
-        Trace given pattern.
+        Trace given path.
         
         Args:
             path (Optional[Path]): path to trace
@@ -679,7 +679,7 @@ class Machine(object):
             
         '''
         if path is not None:
-            return await self.trace_pattern(xs=path.xs, ys=path.ys, zs=path.zs, cs=path.cs, timeout=timeout)
+            return await self.trace(xs=path.xs, ys=path.ys, zs=path.zs, cs=path.cs, timeout=timeout)
         
         if xs is None and ys is None and zs is None and cs is None:
             raise ValueError("At least one vector must be specified.")
@@ -699,6 +699,7 @@ class Machine(object):
         if zs is None: zs = [0]*Npts
         if cs is None: cs = [0]*Npts
         
+        success = True
         for n in range(Npts):
             pt = types.Point(xs[n], ys[n], zs[n], cs[n])
             self.history[-1].append(pt)
@@ -710,9 +711,9 @@ class Machine(object):
                 feed_rate = self._feed_rate,
                 endstops = self._endstops
             )
-            await self.ask(cmd=chain, timeout=timeout)
+            success = success and (await self.ask(cmd=chain, timeout=timeout) is not None)
         
-        return await self.wait(timeout=timeout)
+        return success and await self.wait(timeout=timeout)
         
     def set_model(self, model:render.Model) -> None:
         '''
@@ -812,5 +813,5 @@ class SyncMachine():
     def switch_motors(self, state:bool) -> bool:
         return self.__loop.run_until_complete(self.__machine.switch_motors(state))
     
-    def trace_pattern(self, path:types.Path|None=None, xs=None, ys=None, zs=None, cs=None, timeout:float=None) -> None:
-        return self.__loop.run_until_complete(self.__machine.trace_pattern(path, xs, ys, zs, cs, timeout))
+    def trace(self, path:types.Path|None=None, xs=None, ys=None, zs=None, cs=None, timeout:float=None) -> None:
+        return self.__loop.run_until_complete(self.__machine.trace(path, xs, ys, zs, cs, timeout))
