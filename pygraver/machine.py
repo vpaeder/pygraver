@@ -11,7 +11,6 @@ but other firmwares may work too. A useful comparison of functionalities found
 in the RepRap wiki (http://reprap.org/wiki/G-code) may help determine compatibility.
 '''
 
-# import base classes
 import asyncio
 import serial_asyncio
 from serial import SerialException
@@ -19,7 +18,6 @@ from .core import types, render
 from .render import StyledPath
 from .exceptions import *
 import re
-# import plotting classes
 import logging
 
 
@@ -95,6 +93,34 @@ class Machine(object):
 
     port = property(get_port, set_port) 
 
+    def set_baud_rate(self, baud_rate:int) -> None:
+        '''
+        Set baud rate for serial connection.
+        
+        Args:
+            baud_rate (int): baud rate
+        
+        Raises:
+            ValueError: if value is not strictly positive.
+            SerialException: if a serial connection is already open.
+        '''
+        if self.__reader is not None or self.__writer is not None:
+            raise SerialException("A serial connection is already open. It must be closed first.")
+        if baud_rate<=0:
+            raise ValueError("Baud rate must be strictly positive.")
+        self._serial_baud_rate = baud_rate
+
+    def get_baud_rate(self) -> int:
+        '''
+        Get baud rate for serial connection.
+        
+        Returns:
+            int: baud rate
+        '''
+        return self._serial_baud_rate
+
+    serial_baud_rate = property(get_baud_rate, set_baud_rate)
+
     def set_timeout(self, timeout:float|None) -> None:
         '''
         Set serial timeout.
@@ -119,7 +145,56 @@ class Machine(object):
         return self._timeout
     
     timeout = property(get_timeout, set_timeout)
+
+    def set_term_char(self, term_char:str) -> None:
+        '''
+        Set termination character for serial communication.
+        
+        Args:
+            term_char (str): termination character
+        
+        Raises:
+            ValueError: if given value is negative.
+        '''
+        self._term_char = term_char
     
+    def get_term_char(self) -> str:
+        '''
+        Get termination character for serial communication.
+        
+        Returns:
+            str: termination character
+        '''
+        return self._term_char
+    
+    term_char = property(get_term_char, set_term_char)
+
+    def set_response_ok(self, response:str) -> None:
+        '''
+        Set OK response string for serial communication.
+        
+        Args:
+            response (str): response string
+        
+        Raises:
+            ValueError: if string is empty.
+        '''
+        if len(response) == 0:
+            raise ValueError("Response string cannot be empty.")
+        
+        self._response_ok = response
+    
+    def get_response_ok(self) -> str:
+        '''
+        Get OK response string for serial communication.
+        
+        Returns:
+            str: response string
+        '''
+        return self._response_ok
+    
+    response_ok = property(get_response_ok, set_response_ok)
+
     def set_tool_size(self, tool_size:float) -> None:
         '''
         Set tool size.
@@ -676,7 +751,10 @@ class SyncMachine():
     feedrate = property(lambda self: self.__machine.feedrate, lambda self, feedrate: setattr(self.__machine, "feedrate", feedrate))
     model = property(lambda self: self.__machine.model, lambda self, model: setattr(self.__machine, "model", model))
     port = property(lambda self: self.__machine.port, lambda self, port: setattr(self.__machine, "port", port))
+    serial_baud_rate = property(lambda self: self.__machine.serial_baud_rate, lambda self, baud_rate: setattr(self.__machine, "baud_rate", baud_rate))
     timeout = property(lambda self: self.__machine.timeout, lambda self, timeout: setattr(self.__machine, "timeout", timeout))
+    term_char = property(lambda self: self.__machine.term_char, lambda self, term_char: setattr(self.__machine, "term_char", term_char))
+    response_ok = property(lambda self: self.__machine.response_ok, lambda self, response_ok: setattr(self.__machine, "response_ok", response_ok))
     tool_size = property(lambda self: self.__machine.tool_size, lambda self, tool_size: setattr(self.__machine, "tool_size", tool_size))
 
     def disable_endstops(self) -> None:
