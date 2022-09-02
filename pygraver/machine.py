@@ -748,7 +748,7 @@ class SyncMachine():
         self.__machine = Machine(port)
         self.__loop = asyncio.get_event_loop()
     
-    feedrate = property(lambda self: self.__machine.feedrate, lambda self, feedrate: setattr(self.__machine, "feedrate", feedrate))
+    feed_rate = property(lambda self: self.__machine.feed_rate, lambda self, feed_rate: setattr(self.__machine, "feed_rate", feed_rate))
     model = property(lambda self: self.__machine.model, lambda self, model: setattr(self.__machine, "model", model))
     port = property(lambda self: self.__machine.port, lambda self, port: setattr(self.__machine, "port", port))
     serial_baud_rate = property(lambda self: self.__machine.serial_baud_rate, lambda self, baud_rate: setattr(self.__machine, "baud_rate", baud_rate))
