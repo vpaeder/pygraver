@@ -39,6 +39,7 @@ class Machine(object):
         to the x-y plane (i.e. rotation occurs in the x-y plane).
     '''
     _axes = {"X":"x", "Y":"y", "Z":"z", "C":"c"}
+    _endstops_code = "H"
     _term_char = '\n'
     _response_ok = "ok"
     _serial_baud_rate = 115200
@@ -250,6 +251,12 @@ class Machine(object):
     
     feed_rate = property(get_feed_rate, set_feed_rate)
 
+    def flush(self) -> None:
+        '''
+        Flush serial line.
+        '''
+        self.__reader._transport.serial.flushInput()
+        self.__reader._transport.serial.flushOutput()
 
     async def open(self) -> bool:
         '''
@@ -298,7 +305,7 @@ class Machine(object):
             asyncio.TimeoutError: if timeout is reached
         '''
         # send command to instrument
-        if self.__writer is None: return False
+        if self.__writer is None: return
         timeout = self._timeout if timeout is None else timeout
         self.__writer.write("{cmd}{term}".format(cmd=cmd, term=self._term_char).encode("utf-8"))
         logging.info(cmd)
@@ -545,11 +552,12 @@ class Machine(object):
         mode_cmd = "G91" if relative else "G90"
         
         # builds g-code line
-        cmd = "{mode_cmd}{term_char}{cmd} F{frate} S{endstops:d}".format(
+        cmd = "{mode_cmd}{term_char}{cmd} F{frate} {es_code}{endstops:d}".format(
             mode_cmd = mode_cmd,
             term_char = self._term_char,
             cmd = self._make_position_string("G0", new_pos),
             frate = self._feed_rate,
+            es_code = self._endstops_code,
             endstops = self._endstops
         )
         
@@ -558,7 +566,8 @@ class Machine(object):
         for ax in new_pos:
             setattr(pt, self._axes[ax], new_pos[ax])
         
-        return await self.write(cmd=cmd, timeout=timeout)
+        await self.write(cmd=cmd, timeout=timeout)
+        return len(await self.readline(timeout))>0
 
     async def abs_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         '''
@@ -703,12 +712,13 @@ class Machine(object):
         for n in range(Npts):
             pt = types.Point(xs[n], ys[n], zs[n], cs[n])
             self.history[-1].append(pt)
-            chain = "G1 X{xpos:f} Y{ypos:f} Z{zpos:f} C{cpos:f} F{feed_rate:f} S{endstops:d}".format(
+            chain = "G1 X{xpos:f} Y{ypos:f} Z{zpos:f} C{cpos:f} F{feed_rate:f} {es_code}{endstops:d}".format(
                 xpos = xs[n],
                 ypos = ys[n],
                 zpos = zs[n],
                 cpos = cs[n],
                 feed_rate = self._feed_rate,
+                es_code = self._endstops_code,
                 endstops = self._endstops
             )
             success = success and (await self.ask(cmd=chain, timeout=timeout) is not None)
@@ -769,6 +779,9 @@ class SyncMachine():
     
     def close(self, timeout: float|None=None) -> bool:
         return self.__loop.run_until_complete(self.__machine.close(timeout))
+    
+    def flush(self) -> None:
+        self.__machine.flush()
     
     def write(self, cmd: str, timeout: float|None=None) -> None:
         return self.__loop.run_until_complete(self.__machine.write(cmd, timeout))
