@@ -20,7 +20,6 @@ from .exceptions import *
 import re
 import logging
 
-
 class Machine(object):
     '''
     Machine handling class.
@@ -256,7 +255,7 @@ class Machine(object):
         Flush serial line.
         '''
         self.__reader._transport.serial.flushInput()
-        self.__reader._transport.serial.flushOutput()
+        self.__writer._transport.serial.flushOutput()
 
     async def open(self) -> bool:
         '''
@@ -327,7 +326,7 @@ class Machine(object):
         if self.__reader is None: return None
         timeout = self._timeout if timeout is None else timeout
         return await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char.encode("utf-8")), timeout=timeout)
-        
+    
     async def wait_answer(self, n_lines:int=1, timeout:float|None=None) -> 'list[bytes]':
         '''
         Wait for answer from machine.
@@ -348,11 +347,13 @@ class Machine(object):
                 msg.append(await self.readline(timeout))
             except asyncio.TimeoutError:
                 return None
+            
             n_lines -= 1
-            if len(msg)>0 and msg[-1].endswith(ok_message):
-                return msg
         
-        return None
+        if len(msg)==0:
+            return None
+        
+        return msg
     
     async def ask(self, cmd:str, n_lines:int=1, timeout:float|None=None) -> 'list[bytes]':
         '''
@@ -364,7 +365,8 @@ class Machine(object):
             timeout (Optional[float]): timeout, in seconds (default: use default timeout)
         
         Returns:
-            bool: True if movement was completed before timeout, False otherwise
+            list[bytes]: replied message split line by line
+            None: if an error occurred
         
         Raises:
             asyncio.TimeoutError: if command couldn't be sent to machine within timeout
@@ -388,11 +390,10 @@ class Machine(object):
         
         '''
         if self.__reader is None: return False
-        await self.write(cmd="G4 S0", timeout=timeout)
         try:
             # we don't care about the content of the answer, as long as we get an answer
             # (which means that the machine has finished all the assigned tasks and is now ready)
-            await asyncio.wait_for(self.__reader.readuntil(separator=self._term_char.encode("utf-8")), timeout=timeout)
+            await self.ask(cmd="G4 P0", n_lines=1, timeout=timeout)
         except asyncio.TimeoutError:
             return False
         return True
@@ -418,7 +419,7 @@ class Machine(object):
 
         rep = await self.ask(cmd="M114", n_lines=2, timeout=timeout)
 
-        if rep is None:
+        if rep is None or len(rep)!=2:
             raise asyncio.TimeoutError("Machine didn't answer within timeout.")
 
         pt = types.Point()
@@ -566,8 +567,7 @@ class Machine(object):
         for ax in new_pos:
             setattr(pt, self._axes[ax], new_pos[ax])
         
-        await self.write(cmd=cmd, timeout=timeout)
-        return len(await self.readline(timeout))>0
+        return (await self.ask(cmd=cmd, n_lines=2, timeout=timeout)) is not None
 
     async def abs_move(self, position:types.Point|None=None, timeout:float=None, **kwargs) -> bool:
         '''
@@ -663,7 +663,7 @@ class Machine(object):
             asyncio.TimeoutError: if command didn't return within timeout
         '''
         # switches motors on (state=True) or off (state=False)
-        return await self.write(cmd="M84 S30" if state else "M18", timeout=timeout)
+        return await len(self.ask(cmd="M84 S30" if state else "M18", timeout=timeout))==1
         
     async def trace(self, path:types.Path|None=None, xs:'list[float]|None'=None, ys:'list[float]|None'=None, zs:'list[float]|None'=None, cs:'list[float]|None'=None, timeout:float|None=None) -> bool:
         '''
@@ -708,7 +708,11 @@ class Machine(object):
         if zs is None: zs = [0]*Npts
         if cs is None: cs = [0]*Npts
         
+        # set to absolute mode
+        await self.ask(cmd="G90", timeout=timeout)
         success = True
+        tasks = []
+        loop = asyncio.get_event_loop()
         for n in range(Npts):
             pt = types.Point(xs[n], ys[n], zs[n], cs[n])
             self.history[-1].append(pt)
@@ -721,8 +725,12 @@ class Machine(object):
                 es_code = self._endstops_code,
                 endstops = self._endstops
             )
-            success = success and (await self.ask(cmd=chain, timeout=timeout) is not None)
+            tasks.append(asyncio.ensure_future(self.write(cmd=chain, timeout=timeout), loop=loop))
         
+        # send command lines
+        await asyncio.wait(tasks)
+        # read answers => len(path)*"ok" if succesful, None if failed
+        success = success and (await self.wait_answer(n_lines=len(tasks), timeout=timeout) is not None)
         return success and await self.wait(timeout=timeout)
         
     def set_model(self, model:render.Model) -> None:
